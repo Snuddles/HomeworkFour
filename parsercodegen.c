@@ -29,12 +29,14 @@ int program();
 void block();
 void const_declaration();
 int var_declaration();
+void proc_declaration();
 void statements();
 void conditions();
 void factor();
 void print_symbol_table();
 void expression();
 void emit(char operand[6], char M[6]);
+
 typedef struct
 {
     int kind;      // const = 1, var = 2, proc = 3
@@ -371,6 +373,15 @@ int state_identifier(char c, char identifier_or_digit[], int i)
         {
             return writesym;
         }
+        else if (strcmp(identifier_or_digit, "procsym") == 0)
+        {
+            return procsym;
+        }
+        else if (strcmp(identifier_or_digit, "call") == 0)
+        {
+            return callsym;
+        }
+
 
         return identsym; // string isn't a reserved word. It's an identifier
     }
@@ -442,9 +453,6 @@ void block()
     emit(operand, M);
     statements();
 }
-void proc_declaration(){
-    
-}
 
 void const_declaration()
 {
@@ -461,7 +469,7 @@ void const_declaration()
             token_list_index += 3;                                                            // skips token and space value
             if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // err
             {
-                printf("Error: const, var, and read keywords must be followed by identifier\n");
+                printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
                 exit(1);
             }
             token_list_index += 2; // is on the index for the indentifier name
@@ -504,7 +512,7 @@ void const_declaration()
         } while (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '7'); // commasym = 17
         if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
         {
-            printf("Error: constant and variable declarations must be followed by a semicolon\n");
+            printf("Error: constant, variable, and procedure declarations must be followed by a semicolon\n");
             exit(1);
         }
         token_list_index += 3;
@@ -526,7 +534,7 @@ int var_declaration()
 
             if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // token != identsym
             {
-                printf("Error: const, var, and read keywords must be followed by identifier\n");
+                printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
                 exit(1);
             }
             token_list_index += 2; // gets the next token
@@ -544,7 +552,7 @@ int var_declaration()
                 printf("Error: Symbol name has already been declared\n");
                 exit(1);
             }
-            insert(name, 2, 0, 0, (numVars + 2), 1);
+            insert(name, 2, 0, 0, (numVars + 2), 0); //changed mark to 0
 
             token_list_index++;
 
@@ -1058,4 +1066,34 @@ void emit(char operand[6], char M[6])
         strcpy(opr_array[ccx].M, M);
     }
     ccx++;
+}
+
+
+void proc_declaration(){
+
+    char name[11];
+    char digit[6];
+    int digit_index = 0;
+    int name_index = 0;
+    while(tokenList[token_list_index] == '3' && tokenList[token_list_index + 1] == '0'){
+        token_list_index += 3;
+        if(tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' '){ // check identsym
+            printf("const, var, procedure must be followed by identifier");
+            exit(1);
+        }
+        if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
+        {
+            printf("Error: constant, procedure and variable declarations must be followed by a semicolon\n");
+            exit(1);
+        }
+        token_list_index += 3;
+        block(); //     
+        if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
+        {
+            printf("Error: constant, procedure and variable declarations must be followed by a semicolon\n");
+            exit(1);
+        }
+        token_list_index += 3;
+    }
+    statements();
 }
