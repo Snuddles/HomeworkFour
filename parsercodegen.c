@@ -12,6 +12,11 @@
         -3 = Invalid symbols.
 */
 
+/*
+
+
+*/
+
 // global array thats stores the values of digits greater than 5 and identifiers greater than 11
 
 int state_one(char c, char identifier_or_digit[], int i);
@@ -96,16 +101,16 @@ typedef enum
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
-    {
-        printf("Must include input.txt file or input{1..15}.txt files\n");
-        exit(1);
-    }
+    // if (argc != 2)
+    // {
+    //     printf("Must include input.txt file or input{1..15}.txt files\n");
+    //     exit(1);
+    // }
     int token_size = 10;
     ccx = 0;
     tokenList = calloc(token_size + 1, sizeof(char));
-    file = fopen(argv[1], "r");
-    //file = fopen("input.txt", "r"); // for testing
+    //file = fopen(argv[1], "r");
+    file = fopen("input.txt", "r"); // for testing
     // Initializing symbol table
     table_pointer = 1;
     symbol_table = malloc(sizeof(symbol) * MAX_SYMBOL_TABLE_SIZE);
@@ -437,6 +442,9 @@ void block()
     emit(operand, M);
     statements();
 }
+void proc_declaration(){
+    
+}
 
 void const_declaration()
 {
@@ -606,6 +614,20 @@ void statements()
         emit(operand, M);
         return;
     }
+    if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '7'){ // callsym
+        token_list_index += 3;
+        if (!(isalnum(tokenList[token_list_index]))){ // check if its alnum 
+            printf("Error: identifer name for call is non-alphanumeric\n");
+        }
+        while (isalnum(tokenList[token_list_index])) // gets identifier name
+        {
+            name[name_index++] = tokenList[token_list_index];
+            token_list_index++;
+        }
+        name[name_index] = '\0';
+        name_index = 0;
+    }
+
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '1') // beginsym
     {
         do
