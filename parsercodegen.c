@@ -24,7 +24,7 @@ int state_identifier(char c, char identifier_or_digit[], int i);
 int state_Digits(char identifier_or_digit[]);
 // linear search through symbol table looking at name
 int symbol_table_check(char identifier[11]);
-void insert(char identifier[11], int kind, int val, int level, int addr, int mark);
+void insert(char identifier[11], int kind, int val, int addr, int mark);
 int program();
 void block();
 void const_declaration();
@@ -54,6 +54,7 @@ int table_pointer;
 symbol *symbol_table;
 int token_list_index;
 char *tokenList;
+int lexographical_level;
 int ccx; // current code index
 
 typedef struct
@@ -109,9 +110,10 @@ int main(int argc, char *argv[])
     //     exit(1);
     // }
     int token_size = 10;
+    lexographical_level = 0;
     ccx = 0;
     tokenList = calloc(token_size + 1, sizeof(char));
-    //file = fopen(argv[1], "r");
+    // file = fopen(argv[1], "r");
     file = fopen("input.txt", "r"); // for testing
     // Initializing symbol table
     table_pointer = 1;
@@ -190,11 +192,7 @@ int main(int argc, char *argv[])
 
         break;
     }
-    if (HALT == -1)
-    {
-        printf("Error: program must end with period\n");
-        exit(1);
-    }
+
     for (int i = 0; i < ccx; i++)
     {
         printf("%d %s %c %s\n", i, opr_array[i].operand, opr_array[i].L, opr_array[i].M);
@@ -373,7 +371,7 @@ int state_identifier(char c, char identifier_or_digit[], int i)
         {
             return writesym;
         }
-        else if (strcmp(identifier_or_digit, "procsym") == 0)
+        else if (strcmp(identifier_or_digit, "procedure") == 0)
         {
             return procsym;
         }
@@ -381,7 +379,6 @@ int state_identifier(char c, char identifier_or_digit[], int i)
         {
             return callsym;
         }
-
 
         return identsym; // string isn't a reserved word. It's an identifier
     }
@@ -426,13 +423,19 @@ int program()
 {
     char operand[6];
     char M[6];
+
+    // get token?
     strcpy(M, "3");
     strcpy(operand, "JMP");
     emit(operand, M);
+    // block
     block();
+
+    // periodsym
     if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '9') // periodsym
     {
-        return -1;
+        printf("Error: program must end with period\n");
+        exit(1);
     }
     else
     {
@@ -446,6 +449,7 @@ void block()
 {
     const_declaration();
     int numVars = var_declaration();
+    proc_declaration();
     char operand[6];
     char M[11];
     sprintf(M, "%d", 3 + numVars);
@@ -456,7 +460,7 @@ void block()
 
 void const_declaration()
 {
-    token_list_index = 0;
+
     char name[11];
     char digit[6];
     int digit_index = 0;
@@ -507,10 +511,10 @@ void const_declaration()
             }
             digit[digit_index] = '\0';
             digit_index = 0;
-            insert(name, 1, atoi(digit), 0, 0, 1);
-            token_list_index++; // moves to the next token
+            insert(name, 1, atoi(digit), 0, 1);
+            token_list_index++;                                                                 // moves to the next token
         } while (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '7'); // commasym = 17
-        if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
+        if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8')       // semicolonsym = 18
         {
             printf("Error: constant, variable, and procedure declarations must be followed by a semicolon\n");
             exit(1);
@@ -552,7 +556,7 @@ int var_declaration()
                 printf("Error: Symbol name has already been declared\n");
                 exit(1);
             }
-            insert(name, 2, 0, 0, (numVars + 2), 0); //changed mark to 0
+            insert(name, 2, 0, (numVars + 2), 0); // changed mark to 0
 
             token_list_index++;
 
@@ -568,12 +572,16 @@ int var_declaration()
     return numVars;
 }
 
-void insert(char identifier[11], int kind, int val, int level, int addr, int mark)
+void insert(char identifier[11], int kind, int val, int addr, int mark)
 {
+    if (kind == 3)
+    {
+        lexographical_level++;
+    }
     // inserts the new variable to the symbol table
     strcpy(symbol_table[table_pointer].name, identifier);
     symbol_table[table_pointer].kind = kind;
-    symbol_table[table_pointer].level = level;
+    symbol_table[table_pointer].level = lexographical_level;
     symbol_table[table_pointer].val = val;
     symbol_table[table_pointer].addr = addr;
     symbol_table[table_pointer].mark = mark;
@@ -622,9 +630,11 @@ void statements()
         emit(operand, M);
         return;
     }
-    if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '7'){ // callsym
+    if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '7')
+    { // callsym
         token_list_index += 3;
-        if (!(isalnum(tokenList[token_list_index]))){ // check if its alnum 
+        if (!(isalnum(tokenList[token_list_index])))
+        { // check if its alnum
             printf("Error: identifer name for call is non-alphanumeric\n");
         }
         while (isalnum(tokenList[token_list_index])) // gets identifier name
@@ -643,11 +653,12 @@ void statements()
             token_list_index += 3;
             statements();
         } while (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '8'); // semicolonsym
-        if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != '2') // endsym
+        if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != '2')       // endsym
         {
             printf("Error: begin must be followed by end\n");
             exit(1);
         }
+        lexographical_level--;
         token_list_index += 3;
         return;
     }
@@ -661,7 +672,7 @@ void statements()
         emit(operand, M);                                                                 // emit JPC
         if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != '4') // thensym
         {
-            printf("Error: if must be followed by then.\n");
+            printf("Error: then expected.\n");
             exit(1);
         }
         token_list_index += 3;
@@ -821,7 +832,7 @@ void factor()
 
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == ' ')
     {
-        token_list_index += 2; // next token
+        token_list_index += 2;                       // next token
         while (isalnum(tokenList[token_list_index])) // stores identifier name
         {
             name[name_index++] = tokenList[token_list_index];
@@ -946,9 +957,9 @@ void expression()
         if (tokenList[token_list_index] == '4' && tokenList[token_list_index + 1] == ' ') // plussym = 4
         {
             token_list_index += 2; // get next token
-            term(); 
-            strcpy(operand, "ADD");  
-            emit(operand, M); 
+            term();
+            strcpy(operand, "ADD");
+            emit(operand, M);
         }
         while ((tokenList[token_list_index] == '4' && tokenList[token_list_index + 1] == ' ') || // plussym =4
                (tokenList[token_list_index] == '5' && tokenList[token_list_index + 1] == ' '))   // minussym
@@ -991,6 +1002,7 @@ void print_symbol_table()
 
 int symbol_table_check(char identifier[11])
 {
+
     for (int i = table_pointer; i > 0; i--)
     {
         if (strcmp(symbol_table[i].name, identifier) == 0)
@@ -1068,32 +1080,43 @@ void emit(char operand[6], char M[6])
     ccx++;
 }
 
+void proc_declaration()
+{
 
-void proc_declaration(){
-
-    char name[11];
-    char digit[6];
-    int digit_index = 0;
+    char name[12];
     int name_index = 0;
-    while(tokenList[token_list_index] == '3' && tokenList[token_list_index + 1] == '0'){
+    int symbol_index;
+    while (tokenList[token_list_index] == '3' && tokenList[token_list_index + 1] == '0')
+    {
         token_list_index += 3;
-        if(tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' '){ // check identsym
+        if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ')
+        { // check identsym
             printf("const, var, procedure must be followed by identifier");
             exit(1);
         }
+
+        tokenList += 2;
+
+        while (isalnum(tokenList[token_list_index])) // stores identifier name
+        {
+            name[name_index++] = tokenList[token_list_index];
+            token_list_index++;
+        }
+        name[name_index] = '\0';
+        name_index = 0;
+        token_list_index++;
         if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
         {
             printf("Error: constant, procedure and variable declarations must be followed by a semicolon\n");
             exit(1);
         }
+
+        insert(name, 3, 0, 0, 0);
         token_list_index += 3;
-        block(); //     
-        if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
-        {
-            printf("Error: constant, procedure and variable declarations must be followed by a semicolon\n");
-            exit(1);
-        }
-        token_list_index += 3;
+
+        block(); //
+
+       
     }
     statements();
 }

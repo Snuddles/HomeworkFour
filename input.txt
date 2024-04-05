@@ -1,4 +1,11 @@
-var x, y;
+procedure Proc1;
+var mynum1, mynum2;
+./*
+procedure Proc2;
+const ten = 10;
+var innernum;
 begin
-x := y + 56
-end.
+write ten;
+innernum := five + ten + x;
+write innernum;
+end;*/
