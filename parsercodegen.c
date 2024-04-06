@@ -581,10 +581,7 @@ int var_declaration()
 
 void insert(char identifier[11], int kind, int val, int addr, int mark)
 {
-    if (kind == 3)
-    {
-        lexographical_level++;
-    }
+
     // inserts the new variable to the symbol table
     strcpy(symbol_table[table_pointer].name, identifier);
     symbol_table[table_pointer].kind = kind;
@@ -1120,9 +1117,14 @@ void proc_declaration()
 
         insert(name, 3, 0, 0, 0);
         token_list_index += 3;
-
+        lexographical_level++;
         block(); //
-
+        if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
+        {
+            printf("Error: constant, procedure and variable declarations must be followed by a semicolon\n");
+            exit(1);
+        }
+        token_list_index += 3;
        
     }
     statements();
