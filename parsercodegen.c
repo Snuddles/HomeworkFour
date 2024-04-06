@@ -649,7 +649,7 @@ void statements()
         }
         name[name_index] = '\0';
         name_index = 0;
-        token_list_index += 2;
+        token_list_index += 1;
     }
 
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '1') // beginsym
