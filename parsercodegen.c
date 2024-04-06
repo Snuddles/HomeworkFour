@@ -23,8 +23,8 @@ int state_one(char c, char identifier_or_digit[], int i);
 int state_identifier(char c, char identifier_or_digit[], int i);
 int state_Digits(char identifier_or_digit[]);
 // linear search through symbol table looking at name
-int symbol_table_check(char identifier[11]);
-void insert(char identifier[11], int kind, int val, int addr, int mark);
+int symbol_table_check(char identifier[12]);
+void insert(char identifier[12], int kind, int val, int addr, int mark);
 int program();
 void block();
 void const_declaration();
@@ -34,13 +34,14 @@ void statements();
 void conditions();
 void factor();
 void print_symbol_table();
+void search_symbol_table();
 void expression();
 void emit(char operand[6], char M[6]);
 
 typedef struct
 {
     int kind;      // const = 1, var = 2, proc = 3
-    char name[11]; // name up to 11 chars
+    char name[12]; // name up to 11 chars plus the null character
     int val;       // number (ASCII value)
     int level;     // L level
     int addr;      // M address
@@ -50,12 +51,14 @@ typedef struct
 #define MAX_SYMBOL_TABLE_SIZE 500
 // GLOBAL VARIABLES
 FILE *file;
-int table_pointer;
+int table_index;
 symbol *symbol_table;
 int token_list_index;
 char *tokenList;
 int lexographical_level;
 int ccx; // current code index
+
+int dx, cx_0;
 
 typedef struct
 {
@@ -113,17 +116,17 @@ int main(int argc, char *argv[])
     lexographical_level = 0;
     ccx = 0;
     tokenList = calloc(token_size + 1, sizeof(char));
+    dx = 3;
+
+    cx_0 = 0;
     // file = fopen(argv[1], "r");
     file = fopen("input.txt", "r"); // for testing
     // print the file
-    char inputCharacter;
-    while ((inputCharacter = fgetc(file)) != EOF) {
-        printf("%c", inputCharacter);
-    }
+
     printf("\n");
     rewind(file);
     // Initializing symbol table
-    table_pointer = 1;
+    table_index = 1;
     symbol_table = malloc(sizeof(symbol) * MAX_SYMBOL_TABLE_SIZE);
     if (file != NULL)
     {
@@ -454,11 +457,14 @@ int program()
 }
 void block()
 {
+    char operand[6];
+    char M[11];
+    dx = 3;
+
     const_declaration();
     int numVars = var_declaration();
     proc_declaration();
-    char operand[6];
-    char M[11];
+
     sprintf(M, "%d", 3 + numVars);
     strcpy(operand, "INC");
     emit(operand, M);
@@ -468,7 +474,7 @@ void block()
 void const_declaration()
 {
 
-    char name[11];
+    char name[12];
     char digit[6];
     int digit_index = 0;
     int name_index = 0;
@@ -563,7 +569,8 @@ int var_declaration()
                 printf("Error: Symbol name has already been declared\n");
                 exit(1);
             }
-            insert(name, 2, 0, (numVars + 2), 0); // changed mark to 0
+            insert(name, 2, 0, dx, 0); // changed mark to 0
+            dx++;
 
             token_list_index++;
 
@@ -579,17 +586,17 @@ int var_declaration()
     return numVars;
 }
 
-void insert(char identifier[11], int kind, int val, int addr, int mark)
+void insert(char identifier[12], int kind, int val, int addr, int mark)
 {
 
     // inserts the new variable to the symbol table
-    strcpy(symbol_table[table_pointer].name, identifier);
-    symbol_table[table_pointer].kind = kind;
-    symbol_table[table_pointer].level = lexographical_level;
-    symbol_table[table_pointer].val = val;
-    symbol_table[table_pointer].addr = addr;
-    symbol_table[table_pointer].mark = mark;
-    table_pointer++;
+    strcpy(symbol_table[table_index].name, identifier);
+    symbol_table[table_index].kind = kind;
+    symbol_table[table_index].level = lexographical_level;
+    symbol_table[table_index].val = val;
+    symbol_table[table_index].addr = addr;
+    symbol_table[table_index].mark = mark;
+    table_index++;
 }
 void statements()
 {
@@ -637,11 +644,20 @@ void statements()
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '7')
     { // callsym
         token_list_index += 3;
+
+        if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // token != identsym
+        {
+            printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
+            exit(1);
+        }
+        token_list_index += 2; // gets the next token
+
         if (!(isalnum(tokenList[token_list_index])))
         { // check if its alnum
             printf("Error: identifer name for call is non-alphanumeric\n");
             exit(1);
         }
+
         while (isalnum(tokenList[token_list_index])) // gets identifier name
         {
             name[name_index++] = tokenList[token_list_index];
@@ -649,6 +665,8 @@ void statements()
         }
         name[name_index] = '\0';
         name_index = 0;
+
+        int index = symbol_table_check(name);
         token_list_index += 1;
     }
 
@@ -830,7 +848,7 @@ void conditions()
 }
 void factor()
 {
-    char name[11];
+    char name[12];
     int name_index = 0;
     char operand[6];
     int symbol_index;
@@ -858,11 +876,16 @@ void factor()
             sprintf(M, "%d", symbol_table[symbol_index].val);
             emit(operand, M);
         }
-        else // var
+        else if (symbol_table[symbol_index].kind == 2) // var
         {
             strcpy(operand, "LOD");
             sprintf(M, "%d", symbol_table[symbol_index].addr);
             emit(operand, M);
+        }
+        else
+        {
+            printf("Error: cant do assignments on procedure");
+            exit(1);
         }
         token_list_index++; // next token
     }
@@ -992,7 +1015,7 @@ void print_symbol_table()
     printf("\nSymbol Table:\n");
     printf("Kind \t| Name \t| Value | Level | Address | Mark\n");
     printf("---------------------------------------------------\n");
-    for (int i = 1; i < table_pointer; i++)
+    for (int i = 1; i < table_index; i++)
     {
         if (symbol_table[i].kind == 1)
         {
@@ -1006,10 +1029,10 @@ void print_symbol_table()
     }
 }
 
-int symbol_table_check(char identifier[11])
+int symbol_table_check(char identifier[12])
 {
 
-    for (int i = table_pointer; i > 0; i--)
+    for (int i = table_index; i > 0; i--)
     {
         if (strcmp(symbol_table[i].name, identifier) == 0)
         {
@@ -1021,61 +1044,72 @@ int symbol_table_check(char identifier[11])
 
 void emit(char operand[6], char M[6])
 {
-    strcpy(opr_array[ccx].operand, "OPR");
+
     strcpy(opr_array[ccx].M, M);
     opr_array[ccx].L = '0';
     if (strcmp(operand, "ADD") == 0)
     {
         strcpy(opr_array[ccx].M, "1");
+        strcpy(opr_array[ccx].operand, "ADD");
     }
     else if (strcmp(operand, "SUB") == 0)
     {
         strcpy(opr_array[ccx].M, "2");
+        strcpy(opr_array[ccx].operand, "SUB");
     }
     else if (strcmp(operand, "MUL") == 0)
     {
         strcpy(opr_array[ccx].M, "3");
+        strcpy(opr_array[ccx].operand, "MUL");
     }
     else if (strcmp(operand, "DIV") == 0)
     {
         strcpy(opr_array[ccx].M, "4");
+        strcpy(opr_array[ccx].operand, "DIV");
     }
     else if (strcmp(operand, "EQL") == 0)
     {
         strcpy(opr_array[ccx].M, "5");
+        strcpy(opr_array[ccx].operand, "EQL");
     }
     else if (strcmp(operand, "NEQ") == 0)
     {
         strcpy(opr_array[ccx].M, "6");
+        strcpy(opr_array[ccx].operand, "NEQ");
     }
     else if (strcmp(operand, "LSS") == 0)
     {
         strcpy(opr_array[ccx].M, "7");
+        strcpy(opr_array[ccx].operand, "LSS");
     }
     else if (strcmp(operand, "LEQ") == 0)
     {
         strcpy(opr_array[ccx].M, "8");
+        strcpy(opr_array[ccx].operand, "LEQ");
     }
     else if (strcmp(operand, "GTR") == 0)
     {
         strcpy(opr_array[ccx].M, "9");
+        strcpy(opr_array[ccx].operand, "GTR");
     }
     else if (strcmp(operand, "GEQ") == 0)
     {
         strcpy(opr_array[ccx].M, "10");
+        strcpy(opr_array[ccx].operand, "GEQ");
     }
     else if (strcmp(operand, "ODD") == 0)
     {
         strcpy(opr_array[ccx].M, "11");
+        strcpy(opr_array[ccx].operand, "ODD");
     }
     else if (strcmp(operand, "WRITE") == 0)
     {
-        strcpy(opr_array[ccx].operand, "SOU");
+        strcpy(opr_array[ccx].operand, "SYS");
         strcpy(opr_array[ccx].M, "1");
     }
     else if (strcmp(operand, "READ") == 0)
     {
-        strcpy(opr_array[ccx].operand, "SIN");
+        strcpy(opr_array[ccx].operand, "SYS");
         strcpy(opr_array[ccx].M, "2");
     }
     else
@@ -1120,14 +1154,25 @@ void proc_declaration()
         insert(name, 3, 0, 0, 0);
         token_list_index += 3;
         lexographical_level++;
-        block(); //
+        block();                                                                          //
         if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
         {
             printf("Error: constant, procedure and variable declarations must be followed by a semicolon\n");
             exit(1);
         }
         token_list_index += 3;
-       
     }
     statements();
 }
+
+// void search_symbol_table(char name[12]){
+
+//     int index = symbol_table_check(name);
+
+//     for(int i =0; i<index;i++){
+//         if(symbol_table_check[index]==)
+//     }
+
+//     return -1;
+
+// }

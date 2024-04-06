@@ -1,30 +1,20 @@
-var x, y, z, v, w;
-procedure a;
-var x, y, u, v;
-procedure b;
-var y, z, v;
-procedure c;
-var y, z;
+const five = 5;
+var x, y, z;
+procedure Proc1;
+var mynum1, mynum2;
+procedure Proc2;
+const ten = 10;
+var innernum;
 begin
-z := 1;
-x := y + z + w;
+write ten;
+innernum := five + ten + x;
+write innernum;
 end;
 begin
-y := x + u + w;
-call c;
+x := 15;
+call Proc2;
 end;
 begin
-z := 2;
-u := z + w;
-call b
-end;
-begin
-x := 1;
-y := 2;
-z := 3;
-v := 4;
-w := 5;
-x := v + w;
-write z;
-call a;
+x := 7;
+call Proc1;
 end.
