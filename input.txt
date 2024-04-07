@@ -1,20 +1,15 @@
-const five = 5;
-var x, y, z;
-procedure Proc1;
-var mynum1, mynum2;
-procedure Proc2;
-const ten = 10;
-var innernum;
+var f, n;
+procedure fact;
+var ans1;
 begin
-write ten;
-innernum := five + ten + x;
-write innernum;
+ans1:=n;
+n := n-1;
+if n = 0 then f := 1 fi;
+if n > 0 then call fact fi;
+f := f * ans1;
 end;
 begin
-x := 15;
-call Proc2;
-end;
-begin
-x := 7;
-call Proc1;
+n := 4;
+call fact;
+write f;
 end.

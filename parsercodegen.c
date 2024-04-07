@@ -36,8 +36,9 @@ void factor();
 void print_symbol_table();
 void search_symbol_table();
 void expression();
-void emit(char operand[6], char M[6]);
-
+void emit(char operand[6], int L, int M);
+int convert_string_to_int(char M[]);
+void findBase(int table_index);
 typedef struct
 {
     int kind;      // const = 1, var = 2, proc = 3
@@ -57,14 +58,14 @@ int token_list_index;
 char *tokenList;
 int lexographical_level;
 int ccx; // current code index
-
-int dx, cx_0;
+int procedure_address = 3;
+int INC_CCX;
 
 typedef struct
 {
     char operand[6];
-    char M[6];
-    char L;
+    int M;
+    int L;
 } operand;
 operand opr_array[500];
 
@@ -116,9 +117,7 @@ int main(int argc, char *argv[])
     lexographical_level = 0;
     ccx = 0;
     tokenList = calloc(token_size + 1, sizeof(char));
-    dx = 3;
 
-    cx_0 = 0;
     // file = fopen(argv[1], "r");
     file = fopen("input.txt", "r"); // for testing
     // print the file
@@ -165,7 +164,9 @@ int main(int argc, char *argv[])
             }
             char identifier_or_digit[12] = ""; // empty array to store string
             int n = state_one(c, identifier_or_digit, 0);
-
+            if(n==fisym){
+                continue;
+            }
             char token[5];
             sprintf(token, "%d", n); // converts the digit into a string
             int size_one = strlen(tokenList);
@@ -205,7 +206,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < ccx; i++)
     {
-        printf("%d %s %c %s\n", i, opr_array[i].operand, opr_array[i].L, opr_array[i].M);
+        printf("%d %s %d %d\n", i, opr_array[i].operand, opr_array[i].L, opr_array[i].M);
     }
     print_symbol_table();
     fclose(file);
@@ -365,6 +366,10 @@ int state_identifier(char c, char identifier_or_digit[], int i)
         {
             return thensym;
         }
+        else if (strcmp(identifier_or_digit, "fi") == 0)
+        {
+            return fisym;
+        }
         else if (strcmp(identifier_or_digit, "while") == 0)
         {
             return whilesym;
@@ -432,12 +437,7 @@ int state_Digits(char identifier_or_digit[])
 int program()
 {
     char operand[6];
-    char M[6];
 
-    // get token?
-    strcpy(M, "3");
-    strcpy(operand, "JMP");
-    emit(operand, M);
     // block
     block();
 
@@ -449,25 +449,27 @@ int program()
     }
     else
     {
-        strcpy(M, "3");
+
         strcpy(operand, "EOP");
-        emit(operand, M);
+        emit(operand, 0, 3);
     }
     return 1;
 }
+
 void block()
 {
     char operand[6];
-    char M[11];
-    dx = 3;
+    int JMP_INDEX = ccx;
+    strcpy(operand, "JMP");
+    emit(operand, 0, ccx * 3);
 
     const_declaration();
     int numVars = var_declaration();
     proc_declaration();
+    opr_array[JMP_INDEX].M = ccx * 3;
 
-    sprintf(M, "%d", 3 + numVars);
     strcpy(operand, "INC");
-    emit(operand, M);
+    emit(operand, 0, 3 + numVars);
     statements();
 }
 
@@ -546,7 +548,7 @@ int var_declaration()
     {
         do
         {
-            numVars++;
+
             token_list_index += 3; // gets the next token
 
             if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // token != identsym
@@ -569,9 +571,8 @@ int var_declaration()
                 printf("Error: Symbol name has already been declared\n");
                 exit(1);
             }
-            insert(name, 2, 0, dx, 0); // changed mark to 0
-            dx++;
-
+            insert(name, 2, 0, (3 + numVars), 0); // changed mark to 0
+            numVars++;
             token_list_index++;
 
         } while (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '7'); // commasym = 17
@@ -581,6 +582,7 @@ int var_declaration()
             printf("constant and variable declarations must be followed by a semicolon");
             exit(1);
         }
+
         token_list_index += 3;
     }
     return numVars;
@@ -602,8 +604,8 @@ void statements()
 {
     char name[12];
     int name_index = 0;
-    char operand[6];
-    char M[6];
+    char *operand = malloc(sizeof(char) * 6);
+
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == ' ') // identsym
     {
         token_list_index += 2; // gets the next token
@@ -637,8 +639,8 @@ void statements()
         token_list_index += 3;
         expression();
         strcpy(operand, "STO");
-        sprintf(M, "%d", symbol_table[symindex].addr);
-        emit(operand, M);
+
+        emit(operand, symbol_table[symindex].level, symbol_table[symindex].addr);
         return;
     }
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '7')
@@ -667,6 +669,15 @@ void statements()
         name_index = 0;
 
         int index = symbol_table_check(name);
+        if (index == -1)
+        {
+            printf("Procedure doesn't exist\n");
+            exit(1);
+        }
+
+        strcpy(operand, "CAL");
+
+        emit(operand, 0, 3);
         token_list_index += 1;
     }
 
@@ -682,8 +693,16 @@ void statements()
             printf("Error: begin must be followed by end\n");
             exit(1);
         }
+
         lexographical_level--;
         token_list_index += 3;
+
+        if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '9') // not periodsym
+        {
+            strcpy(operand, "RTN");
+            emit(operand, 0, 0);
+        }
+
         return;
     }
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '3') // ifsym
@@ -692,16 +711,18 @@ void statements()
         conditions();
         int jpcIdx = ccx;
         strcpy(operand, "JPC");
-        strcpy(M, "0");
-        emit(operand, M);                                                                 // emit JPC
+
+        emit(operand, 0, 0);                                                              // emit JPC
         if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != '4') // thensym
         {
             printf("Error: then expected.\n");
             exit(1);
         }
         token_list_index += 3;
+
         statements();
-        sprintf(opr_array[jpcIdx].M, "%d", ccx); // code[jpcIdx].M = current code index
+
+        opr_array[jpcIdx].M = ccx*3;
         return;
     }
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '5') // whilesym
@@ -717,14 +738,15 @@ void statements()
         token_list_index += 3;
         int jpcIdx = ccx;
         strcpy(operand, "JPC");
-        strcpy(M, "0");
-        emit(operand, M); // emit JPC
+
+        emit(operand, 0, 0); // emit JPC
         statements();
         strcpy(operand, "JMP");
-        sprintf(M, "%d", loopIdx);
-        emit(operand, M); // emit JMP (M = loopIdx)
-        sprintf(M, "%d", ccx);
-        strcpy(opr_array[jpcIdx].M, M); // code[jpcIdx].M = current code index
+
+        opr_array[jpcIdx].M = loopIdx;
+        // code[jpcIdx].M = current code index
+
+        free(operand);
         return;
     }
     if (tokenList[token_list_index] == '3' && tokenList[token_list_index + 1] == '2') // readysym
@@ -756,11 +778,11 @@ void statements()
         }
         token_list_index++;
         strcpy(operand, "READ");
-        strcpy(M, "0");
-        emit(operand, M);
+
+        emit(operand, 0, 0);
         strcpy(operand, "STO");
-        sprintf(M, "%d", symbol_table[symIdx].addr);
-        emit(operand, M);
+
+        emit(operand, symbol_table[symIdx].level, symbol_table[symIdx].addr);
         return;
     }
     if (tokenList[token_list_index] == '3' && tokenList[token_list_index + 1] == '1') // writesym
@@ -768,22 +790,22 @@ void statements()
         token_list_index += 3;
         expression();
         strcpy(operand, "WRITE");
-        strcpy(M, "0");
-        emit(operand, M);
+
+        emit(operand, 0, 1);
         return;
     }
 }
 void conditions()
 {
-    char operand[6];
-    char M[7];
+    char *operand = malloc(sizeof(char) * 7);
+
     if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == ' ') // oddsym
     {
         token_list_index += 2;
         expression();
         strcpy(operand, "ODD");
-        strcpy(M, "0");
-        emit(operand, M);
+
+        emit(operand, 0, 11);
     }
     else
     {
@@ -793,24 +815,23 @@ void conditions()
             token_list_index += 2;
             expression();
             strcpy(operand, "EQL");
-            strcpy(M, "0");
-            emit(operand, M);
+
+            emit(operand, 0, 5);
         }
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '0') // neqsym
         {
             token_list_index += 3;
             expression();
             strcpy(operand, "NEQ");
-            strcpy(M, "0");
-            emit(operand, M);
+
+            emit(operand, 0, 6);
         }
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '1') // lessym
         {
             token_list_index += 3;
             expression();
             strcpy(operand, "LSS");
-            strcpy(M, "0");
-            emit(operand, M);
+            emit(operand, 0, 7);
         }
 
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '2') // leqsym
@@ -818,8 +839,8 @@ void conditions()
             token_list_index += 3;
             expression();
             strcpy(operand, "LEQ");
-            strcpy(M, "0");
-            emit(operand, M);
+
+            emit(operand, 0, 8);
         }
 
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '3') // gtrsym
@@ -827,8 +848,8 @@ void conditions()
             token_list_index += 3;
             expression();
             strcpy(operand, "GTR");
-            strcpy(M, "0");
-            emit(operand, M);
+
+            emit(operand, 0, 9);
         }
 
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '4') // geqsym
@@ -836,8 +857,8 @@ void conditions()
             token_list_index += 3;
             expression();
             strcpy(operand, "GEQ");
-            strcpy(M, "0");
-            emit(operand, M);
+
+            emit(operand, 0, 10);
         }
         else
         {
@@ -845,6 +866,7 @@ void conditions()
             exit(1);
         }
     }
+    free(operand);
 }
 void factor()
 {
@@ -852,7 +874,6 @@ void factor()
     int name_index = 0;
     char operand[6];
     int symbol_index;
-    char M[6];
 
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == ' ')
     {
@@ -873,14 +894,13 @@ void factor()
         if (symbol_table[symbol_index].kind == 1) // const
         {
             strcpy(operand, "LIT");
-            sprintf(M, "%d", symbol_table[symbol_index].val);
-            emit(operand, M);
+
+            emit(operand, 0, symbol_table[symbol_index].val);
         }
         else if (symbol_table[symbol_index].kind == 2) // var
         {
             strcpy(operand, "LOD");
-            sprintf(M, "%d", symbol_table[symbol_index].addr);
-            emit(operand, M);
+            emit(operand, (lexographical_level - symbol_table[symbol_index].level), symbol_table[symbol_index].addr);
         }
         else
         {
@@ -901,8 +921,9 @@ void factor()
         }
         M[index] = '\0';
         strcpy(operand, "LIT");
+        int int_M = convert_string_to_int(M);
 
-        emit(operand, M);
+        emit(operand, 0, int_M);
         token_list_index++; // next token
     }
     else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '5') // lparentsym
@@ -937,14 +958,14 @@ void term()
             token_list_index += 2; // get next token
             factor();
             strcpy(operand, "MUL");
-            emit(operand, M);
+            emit(operand, 0, 3);
         }
         else if (tokenList[token_list_index] == '7' && tokenList[token_list_index + 1] == ' ')
         {
             token_list_index += 2; // get next token
             factor();
             strcpy(operand, "DIV");
-            emit(operand, M);
+            emit(operand, 0, 4);
         }
     }
 }
@@ -959,8 +980,8 @@ void expression()
     {
         token_list_index += 2; // get next token
         term();
-        strcpy(operand, "NEG");
-        emit(operand, M);
+        strcpy(operand, "SUB");
+        emit(operand, 0, 2);
         while ((tokenList[token_list_index] == '4' && tokenList[token_list_index + 1] == ' ') || // plussym =4
                (tokenList[token_list_index] == '5' && tokenList[token_list_index + 1] == ' '))   // minussym
         {
@@ -969,14 +990,14 @@ void expression()
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "ADD");
-                emit(operand, M);
+                emit(operand, 0, 1);
             }
             else
             {
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "SUB");
-                emit(operand, M);
+                emit(operand, 0, 2);
             }
         }
     }
@@ -988,7 +1009,7 @@ void expression()
             token_list_index += 2; // get next token
             term();
             strcpy(operand, "ADD");
-            emit(operand, M);
+            emit(operand, 0, 1);
         }
         while ((tokenList[token_list_index] == '4' && tokenList[token_list_index + 1] == ' ') || // plussym =4
                (tokenList[token_list_index] == '5' && tokenList[token_list_index + 1] == ' '))   // minussym
@@ -998,14 +1019,14 @@ void expression()
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "ADD");
-                emit(operand, M);
+                emit(operand, 0, 1);
             }
             else
             {
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "SUB");
-                emit(operand, M);
+                emit(operand, 0, 2);
             }
         }
     }
@@ -1013,19 +1034,13 @@ void expression()
 void print_symbol_table()
 {
     printf("\nSymbol Table:\n");
-    printf("Kind \t| Name \t| Value | Level | Address | Mark\n");
+    printf("Kind \t| Name \t\t| Value | Level | Address | Mark\n");
     printf("---------------------------------------------------\n");
     for (int i = 1; i < table_index; i++)
     {
-        if (symbol_table[i].kind == 1)
-        {
-            printf(" %d\t| %s\t| %d\t| -\t| -\t| %d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].mark);
-        }
-        else
-        {
-            printf(" %d\t| %s\t| %d\t| %d\t| %d\t| %d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val,
-                   symbol_table[i].level, symbol_table[i].addr, symbol_table[i].mark);
-        }
+
+        printf(" %d\t| %s\t\t| %d\t| %d\t| %d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val,
+               symbol_table[i].level, symbol_table[i].addr);
     }
 }
 
@@ -1042,81 +1057,82 @@ int symbol_table_check(char identifier[12])
     return -1;
 }
 
-void emit(char operand[6], char M[6])
+void emit(char operand[6], int L, int M)
 {
 
-    strcpy(opr_array[ccx].M, M);
-    opr_array[ccx].L = '0';
-    if (strcmp(operand, "ADD") == 0)
-    {
-        strcpy(opr_array[ccx].M, "1");
-        strcpy(opr_array[ccx].operand, "ADD");
-    }
-    else if (strcmp(operand, "SUB") == 0)
-    {
-        strcpy(opr_array[ccx].M, "2");
-        strcpy(opr_array[ccx].operand, "SUB");
-    }
-    else if (strcmp(operand, "MUL") == 0)
-    {
-        strcpy(opr_array[ccx].M, "3");
-        strcpy(opr_array[ccx].operand, "MUL");
-    }
-    else if (strcmp(operand, "DIV") == 0)
-    {
-        strcpy(opr_array[ccx].M, "4");
-        strcpy(opr_array[ccx].operand, "DIV");
-    }
-    else if (strcmp(operand, "EQL") == 0)
-    {
-        strcpy(opr_array[ccx].M, "5");
-        strcpy(opr_array[ccx].operand, "EQL");
-    }
-    else if (strcmp(operand, "NEQ") == 0)
-    {
-        strcpy(opr_array[ccx].M, "6");
-        strcpy(opr_array[ccx].operand, "NEQ");
-    }
-    else if (strcmp(operand, "LSS") == 0)
-    {
-        strcpy(opr_array[ccx].M, "7");
-        strcpy(opr_array[ccx].operand, "LSS");
-    }
-    else if (strcmp(operand, "LEQ") == 0)
-    {
-        strcpy(opr_array[ccx].M, "8");
-        strcpy(opr_array[ccx].operand, "LEQ");
-    }
-    else if (strcmp(operand, "GTR") == 0)
-    {
-        strcpy(opr_array[ccx].M, "9");
-        strcpy(opr_array[ccx].operand, "GTR");
-    }
-    else if (strcmp(operand, "GEQ") == 0)
-    {
-        strcpy(opr_array[ccx].M, "10");
-        strcpy(opr_array[ccx].operand, "GEQ");
-    }
-    else if (strcmp(operand, "ODD") == 0)
-    {
-        strcpy(opr_array[ccx].M, "11");
-        strcpy(opr_array[ccx].operand, "ODD");
-    }
-    else if (strcmp(operand, "WRITE") == 0)
+    strcpy(opr_array[ccx].operand, operand);
+    opr_array[ccx].L = L;
+    opr_array[ccx].M = M;
+    // if (strcmp(operand, "ADD") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "1");
+    //     strcpy(opr_array[ccx].operand, "ADD");
+    // }
+    // else if (strcmp(operand, "SUB") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "2");
+    //     strcpy(opr_array[ccx].operand, "SUB");
+    // }
+    // else if (strcmp(operand, "MUL") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "3");
+    //     strcpy(opr_array[ccx].operand, "MUL");
+    // }
+    // else if (strcmp(operand, "DIV") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "4");
+    //     strcpy(opr_array[ccx].operand, "DIV");
+    // }
+    // else if (strcmp(operand, "EQL") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "5");
+    //     strcpy(opr_array[ccx].operand, "EQL");
+    // }
+    // else if (strcmp(operand, "NEQ") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "6");
+    //     strcpy(opr_array[ccx].operand, "NEQ");
+    // }
+    // else if (strcmp(operand, "LSS") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "7");
+    //     strcpy(opr_array[ccx].operand, "LSS");
+    // }
+    // else if (strcmp(operand, "LEQ") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "8");
+    //     strcpy(opr_array[ccx].operand, "LEQ");
+    // }
+    // else if (strcmp(operand, "GTR") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "9");
+    //     strcpy(opr_array[ccx].operand, "GTR");
+    // }
+    // else if (strcmp(operand, "GEQ") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "10");
+    //     strcpy(opr_array[ccx].operand, "GEQ");
+    // }
+    // else if (strcmp(operand, "ODD") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "11");
+    //     strcpy(opr_array[ccx].operand, "ODD");
+    // }
+    if (strcmp(operand, "WRITE") == 0)
     {
         strcpy(opr_array[ccx].operand, "SYS");
-        strcpy(opr_array[ccx].M, "1");
+        // strcpy(opr_array[ccx].M, "1");
     }
     else if (strcmp(operand, "READ") == 0)
     {
         strcpy(opr_array[ccx].operand, "SYS");
-        strcpy(opr_array[ccx].M, "2");
+        // strcpy(opr_array[ccx].M, "2");
     }
-    else
-    {
-        strcpy(opr_array[ccx].operand, operand);
-        strcpy(opr_array[ccx].M, M);
-    }
+    // else
+    // {
+
+    //     // strcpy(opr_array[ccx].M, M);
+    // }
     ccx++;
 }
 
@@ -1125,7 +1141,7 @@ void proc_declaration()
 
     char name[12];
     int name_index = 0;
-    int symbol_index;
+
     while (tokenList[token_list_index] == '3' && tokenList[token_list_index + 1] == '0')
     {
         token_list_index += 3;
@@ -1150,10 +1166,11 @@ void proc_declaration()
             printf("Error: constant, procedure and variable declarations must be followed by a semicolon\n");
             exit(1);
         }
-
-        insert(name, 3, 0, 0, 0);
-        token_list_index += 3;
         lexographical_level++;
+        insert(name, 3, 0, procedure_address, 0);
+        procedure_address += 3;
+        token_list_index += 3;
+
         block();                                                                          //
         if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '8') // semicolonsym = 18
         {
@@ -1162,7 +1179,6 @@ void proc_declaration()
         }
         token_list_index += 3;
     }
-    statements();
 }
 
 // void search_symbol_table(char name[12]){
@@ -1176,3 +1192,13 @@ void proc_declaration()
 //     return -1;
 
 // }
+
+int convert_string_to_int(char M[])
+{
+    int num = 0;
+    for (int i = 0; M[i] != '\0'; i++)
+    {
+        num = num * 10 + (M[i] - 48);
+    }
+    return num;
+}
