@@ -640,6 +640,7 @@ void statements()
         if (!(isalnum(tokenList[token_list_index])))
         { // check if its alnum
             printf("Error: identifer name for call is non-alphanumeric\n");
+            exit(1);
         }
         while (isalnum(tokenList[token_list_index])) // gets identifier name
         {
@@ -648,6 +649,7 @@ void statements()
         }
         name[name_index] = '\0';
         name_index = 0;
+        token_list_index += 2;
     }
 
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '1') // beginsym
