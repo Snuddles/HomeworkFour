@@ -115,6 +115,13 @@ int main(int argc, char *argv[])
     tokenList = calloc(token_size + 1, sizeof(char));
     // file = fopen(argv[1], "r");
     file = fopen("input.txt", "r"); // for testing
+    // print the file
+    char inputCharacter;
+    while ((inputCharacter = fgetc(file)) != EOF) {
+        printf("%c", inputCharacter);
+    }
+    printf("\n");
+    rewind(file);
     // Initializing symbol table
     table_pointer = 1;
     symbol_table = malloc(sizeof(symbol) * MAX_SYMBOL_TABLE_SIZE);
