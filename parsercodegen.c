@@ -640,7 +640,7 @@ void statements()
         expression();
         strcpy(operand, "STO");
 
-        emit(operand, symbol_table[symindex].level, symbol_table[symindex].addr);
+        emit(operand, lexographical_level - symbol_table[symindex].level, symbol_table[symindex].addr);
         return;
     }
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '7')
