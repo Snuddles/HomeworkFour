@@ -33,7 +33,6 @@ void proc_declaration();
 void statements();
 void conditions();
 void factor();
-void print_symbol_table();
 void search_symbol_table();
 void expression();
 void emit(char operand[6], int L, int M);
@@ -208,7 +207,7 @@ int main(int argc, char *argv[])
     {
         printf("%d %s %d %d\n", i, opr_array[i].operand, opr_array[i].L, opr_array[i].M);
     }
-    print_symbol_table();
+
     fclose(file);
     free(tokenList);
     free(symbol_table);
@@ -677,7 +676,7 @@ void statements()
 
         strcpy(operand, "CAL");
 
-        emit(operand, 0, 3);
+        emit(operand, lexographical_level, 3);
         token_list_index += 1;
     }
 
@@ -1031,18 +1030,7 @@ void expression()
         }
     }
 }
-void print_symbol_table()
-{
-    printf("\nSymbol Table:\n");
-    printf("Kind \t| Name \t\t| Value | Level | Address | Mark\n");
-    printf("---------------------------------------------------\n");
-    for (int i = 1; i < table_index; i++)
-    {
 
-        printf(" %d\t| %s\t\t| %d\t| %d\t| %d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val,
-               symbol_table[i].level, symbol_table[i].addr);
-    }
-}
 
 int symbol_table_check(char identifier[12])
 {
