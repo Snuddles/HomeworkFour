@@ -6,3 +6,4 @@ Authors : Ingrid, Lucas and Raulph, Peltrop
 
 #Note: The quotation marks ("") are not included.
 #Note2: You may have an output file that is a .exe extension which also is accepted.
+#Note3: testcase[1-6].txt are test cases. testouput[1-6].txt are expected outputs of those test cases.

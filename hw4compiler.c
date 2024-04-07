@@ -119,8 +119,8 @@ int main(int argc, char *argv[])
     ccx = 0;
     tokenList = calloc(token_size + 1, sizeof(char));
 
-    // file = fopen(argv[1], "r");
-    file = fopen("input.txt", "r"); // for testing
+     file = fopen(argv[1], "r");
+    //file = fopen("testcase5.txt", "r"); // for testing
     // print the file
     char inputCharacter;
     while ((inputCharacter = fgetc(file)) != EOF) {
@@ -506,7 +506,7 @@ void const_declaration()
             token_list_index += 3;                                                            // skips token and space value
             if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // err
             {
-                printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
+                printf("Error: const, var, procedure, call and read keywords must be followed by identifier\n");
                 exit(1);
             }
             token_list_index += 2; // is on the index for the indentifier name
@@ -571,7 +571,7 @@ int var_declaration()
 
             if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // token != identsym
             {
-                printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
+                printf("Error: const, var, procedure, call and read keywords must be followed by identifier\n");
                 exit(1);
             }
             token_list_index += 2; // gets the next token
@@ -667,7 +667,7 @@ void statements()
 
         if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // token != identsym
         {
-            printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
+            printf("Error: const, var, procedure, call and read keywords must be followed by identifier\n");
             exit(1);
         }
         token_list_index += 2; // gets the next token
