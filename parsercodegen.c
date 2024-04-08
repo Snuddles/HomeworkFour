@@ -35,7 +35,7 @@ void conditions();
 void factor();
 void search_symbol_table();
 void expression();
-void emit(char operand[6], int L, int M, int O);
+void emit(char operand[6], int L, int M);
 int convert_string_to_int(char M[]);
 void findBase(int table_index);
 typedef struct
@@ -65,7 +65,6 @@ typedef struct
     char operand[6];
     int M;
     int L;
-    int O; // operand
 } operand;
 operand opr_array[500];
 
@@ -118,14 +117,10 @@ int main(int argc, char *argv[])
     ccx = 0;
     tokenList = calloc(token_size + 1, sizeof(char));
 
-    file = fopen(argv[1], "r");
-    // file = fopen("testcase5.txt", "r"); // for testing
-    //  print the file
-    char inputCharacter;
-    while ((inputCharacter = fgetc(file)) != EOF)
-    {
-        printf("%c", inputCharacter);
-    }
+    // file = fopen(argv[1], "r");
+    file = fopen("input.txt", "r"); // for testing
+    // print the file
+
     printf("\n");
     rewind(file);
     // Initializing symbol table
@@ -168,8 +163,7 @@ int main(int argc, char *argv[])
             }
             char identifier_or_digit[12] = ""; // empty array to store string
             int n = state_one(c, identifier_or_digit, 0);
-            if (n == fisym)
-            {
+            if(n==fisym){
                 continue;
             }
             char token[5];
@@ -208,26 +202,12 @@ int main(int argc, char *argv[])
 
         break;
     }
-    printf("No errors, program is syntactically correct.\n\n");
-    printf("Assembly Code:\n\n");
-    printf("Line OP L M\n");
-
-    // Create elf.txt file
-    FILE *elf_ptr;
-    char filename[] = "elf.txt";
-    elf_ptr = fopen(filename, "w");
-    if (elf_ptr == NULL)
-    {
-        printf("Error opening elf.txt file\n");
-        exit(1);
-    }
 
     for (int i = 0; i < ccx; i++)
     {
         printf("%d %s %d %d\n", i, opr_array[i].operand, opr_array[i].L, opr_array[i].M);
-        fprintf(elf_ptr, "%d %d %d\n", opr_array[i].O, opr_array[i].L, opr_array[i].M);
     }
-    fclose(elf_ptr);
+
     fclose(file);
     free(tokenList);
     free(symbol_table);
@@ -470,7 +450,7 @@ int program()
     {
 
         strcpy(operand, "EOP");
-        emit(operand, 0, 3, 9);
+        emit(operand, 0, 3);
     }
     return 1;
 }
@@ -480,7 +460,7 @@ void block()
     char operand[6];
     int JMP_INDEX = ccx;
     strcpy(operand, "JMP");
-    emit(operand, 0, ccx * 3, 7);
+    emit(operand, 0, ccx * 3);
 
     const_declaration();
     int numVars = var_declaration();
@@ -488,7 +468,7 @@ void block()
     opr_array[JMP_INDEX].M = ccx * 3;
 
     strcpy(operand, "INC");
-    emit(operand, 0, 3 + numVars, 6);
+    emit(operand, 0, 3 + numVars);
     statements();
 }
 
@@ -507,7 +487,7 @@ void const_declaration()
             token_list_index += 3;                                                            // skips token and space value
             if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // err
             {
-                printf("Error: const, var, procedure, call and read keywords must be followed by identifier\n");
+                printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
                 exit(1);
             }
             token_list_index += 2; // is on the index for the indentifier name
@@ -572,7 +552,7 @@ int var_declaration()
 
             if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // token != identsym
             {
-                printf("Error: const, var, procedure, call and read keywords must be followed by identifier\n");
+                printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
                 exit(1);
             }
             token_list_index += 2; // gets the next token
@@ -659,7 +639,7 @@ void statements()
         expression();
         strcpy(operand, "STO");
 
-        emit(operand, lexographical_level - symbol_table[symindex].level, symbol_table[symindex].addr, 4);
+        emit(operand, lexographical_level - symbol_table[symindex].level, symbol_table[symindex].addr);
         return;
     }
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '7')
@@ -668,7 +648,7 @@ void statements()
 
         if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != ' ') // token != identsym
         {
-            printf("Error: const, var, procedure, call and read keywords must be followed by identifier\n");
+            printf("Error: const, var, procedure, and read keywords must be followed by identifier\n");
             exit(1);
         }
         token_list_index += 2; // gets the next token
@@ -696,7 +676,7 @@ void statements()
 
         strcpy(operand, "CAL");
 
-        emit(operand, lexographical_level, 3, 5);
+        emit(operand, lexographical_level, 3);
         token_list_index += 1;
     }
 
@@ -719,7 +699,7 @@ void statements()
         if (tokenList[token_list_index] != '1' || tokenList[token_list_index + 1] != '9') // not periodsym
         {
             strcpy(operand, "RTN");
-            emit(operand, 0, 0, 2);
+            emit(operand, 0, 0);
         }
 
         return;
@@ -731,7 +711,7 @@ void statements()
         int jpcIdx = ccx;
         strcpy(operand, "JPC");
 
-        emit(operand, 0, 0, 8);                                                           // emit JPC
+        emit(operand, 0, 0);                                                              // emit JPC
         if (tokenList[token_list_index] != '2' || tokenList[token_list_index + 1] != '4') // thensym
         {
             printf("Error: then expected.\n");
@@ -741,7 +721,7 @@ void statements()
 
         statements();
 
-        opr_array[jpcIdx].M = ccx * 3;
+        opr_array[jpcIdx].M = ccx*3;
         return;
     }
     if (tokenList[token_list_index] == '2' && tokenList[token_list_index + 1] == '5') // whilesym
@@ -758,7 +738,7 @@ void statements()
         int jpcIdx = ccx;
         strcpy(operand, "JPC");
 
-        emit(operand, 0, 0, 8); // emit JPC
+        emit(operand, 0, 0); // emit JPC
         statements();
         strcpy(operand, "JMP");
 
@@ -798,10 +778,10 @@ void statements()
         token_list_index++;
         strcpy(operand, "READ");
 
-        emit(operand, 0, 0, 9);
+        emit(operand, 0, 0);
         strcpy(operand, "STO");
 
-        emit(operand, lexographical_level - symbol_table[symIdx].level, symbol_table[symIdx].addr, 9);
+        emit(operand, lexographical_level-symbol_table[symIdx].level, symbol_table[symIdx].addr);
         return;
     }
     if (tokenList[token_list_index] == '3' && tokenList[token_list_index + 1] == '1') // writesym
@@ -810,7 +790,7 @@ void statements()
         expression();
         strcpy(operand, "WRITE");
 
-        emit(operand, 0, 1, 9);
+        emit(operand, 0, 1);
         return;
     }
 }
@@ -824,7 +804,7 @@ void conditions()
         expression();
         strcpy(operand, "ODD");
 
-        emit(operand, 0, 11, 2);
+        emit(operand, 0, 11);
     }
     else
     {
@@ -835,7 +815,7 @@ void conditions()
             expression();
             strcpy(operand, "EQL");
 
-            emit(operand, 0, 5, 2);
+            emit(operand, 0, 5);
         }
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '0') // neqsym
         {
@@ -843,14 +823,14 @@ void conditions()
             expression();
             strcpy(operand, "NEQ");
 
-            emit(operand, 0, 6, 2);
+            emit(operand, 0, 6);
         }
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '1') // lessym
         {
             token_list_index += 3;
             expression();
             strcpy(operand, "LSS");
-            emit(operand, 0, 7, 2);
+            emit(operand, 0, 7);
         }
 
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '2') // leqsym
@@ -859,7 +839,7 @@ void conditions()
             expression();
             strcpy(operand, "LEQ");
 
-            emit(operand, 0, 8, 2);
+            emit(operand, 0, 8);
         }
 
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '3') // gtrsym
@@ -868,7 +848,7 @@ void conditions()
             expression();
             strcpy(operand, "GTR");
 
-            emit(operand, 0, 9, 2);
+            emit(operand, 0, 9);
         }
 
         else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '4') // geqsym
@@ -877,7 +857,7 @@ void conditions()
             expression();
             strcpy(operand, "GEQ");
 
-            emit(operand, 0, 10, 2);
+            emit(operand, 0, 10);
         }
         else
         {
@@ -914,12 +894,12 @@ void factor()
         {
             strcpy(operand, "LIT");
 
-            emit(operand, 0, symbol_table[symbol_index].val, 1);
+            emit(operand, 0, symbol_table[symbol_index].val);
         }
         else if (symbol_table[symbol_index].kind == 2) // var
         {
             strcpy(operand, "LOD");
-            emit(operand, (lexographical_level - symbol_table[symbol_index].level), symbol_table[symbol_index].addr, 3);
+            emit(operand, (lexographical_level - symbol_table[symbol_index].level), symbol_table[symbol_index].addr);
         }
         else
         {
@@ -942,7 +922,7 @@ void factor()
         strcpy(operand, "LIT");
         int int_M = convert_string_to_int(M);
 
-        emit(operand, 0, int_M, 1);
+        emit(operand, 0, int_M);
         token_list_index++; // next token
     }
     else if (tokenList[token_list_index] == '1' && tokenList[token_list_index + 1] == '5') // lparentsym
@@ -977,14 +957,14 @@ void term()
             token_list_index += 2; // get next token
             factor();
             strcpy(operand, "MUL");
-            emit(operand, 0, 3, 2);
+            emit(operand, 0, 3);
         }
         else if (tokenList[token_list_index] == '7' && tokenList[token_list_index + 1] == ' ')
         {
             token_list_index += 2; // get next token
             factor();
             strcpy(operand, "DIV");
-            emit(operand, 0, 4, 2);
+            emit(operand, 0, 4);
         }
     }
 }
@@ -1000,7 +980,7 @@ void expression()
         token_list_index += 2; // get next token
         term();
         strcpy(operand, "SUB");
-        emit(operand, 0, 2, 2);
+        emit(operand, 0, 2);
         while ((tokenList[token_list_index] == '4' && tokenList[token_list_index + 1] == ' ') || // plussym =4
                (tokenList[token_list_index] == '5' && tokenList[token_list_index + 1] == ' '))   // minussym
         {
@@ -1009,14 +989,14 @@ void expression()
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "ADD");
-                emit(operand, 0, 1, 2);
+                emit(operand, 0, 1);
             }
             else
             {
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "SUB");
-                emit(operand, 0, 2, 2);
+                emit(operand, 0, 2);
             }
         }
     }
@@ -1028,7 +1008,7 @@ void expression()
             token_list_index += 2; // get next token
             term();
             strcpy(operand, "ADD");
-            emit(operand, 0, 1, 2);
+            emit(operand, 0, 1);
         }
         while ((tokenList[token_list_index] == '4' && tokenList[token_list_index + 1] == ' ') || // plussym =4
                (tokenList[token_list_index] == '5' && tokenList[token_list_index + 1] == ' '))   // minussym
@@ -1038,18 +1018,19 @@ void expression()
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "ADD");
-                emit(operand, 0, 1, 2);
+                emit(operand, 0, 1);
             }
             else
             {
                 token_list_index += 2; // get next token
                 term();
                 strcpy(operand, "SUB");
-                emit(operand, 0, 2, 2);
+                emit(operand, 0, 2);
             }
         }
     }
 }
+
 
 int symbol_table_check(char identifier[12])
 {
@@ -1064,14 +1045,67 @@ int symbol_table_check(char identifier[12])
     return -1;
 }
 
-void emit(char operand[6], int L, int M, int O)
+void emit(char operand[6], int L, int M)
 {
 
     strcpy(opr_array[ccx].operand, operand);
     opr_array[ccx].L = L;
     opr_array[ccx].M = M;
-    opr_array[ccx].O = O;
-
+    // if (strcmp(operand, "ADD") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "1");
+    //     strcpy(opr_array[ccx].operand, "ADD");
+    // }
+    // else if (strcmp(operand, "SUB") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "2");
+    //     strcpy(opr_array[ccx].operand, "SUB");
+    // }
+    // else if (strcmp(operand, "MUL") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "3");
+    //     strcpy(opr_array[ccx].operand, "MUL");
+    // }
+    // else if (strcmp(operand, "DIV") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "4");
+    //     strcpy(opr_array[ccx].operand, "DIV");
+    // }
+    // else if (strcmp(operand, "EQL") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "5");
+    //     strcpy(opr_array[ccx].operand, "EQL");
+    // }
+    // else if (strcmp(operand, "NEQ") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "6");
+    //     strcpy(opr_array[ccx].operand, "NEQ");
+    // }
+    // else if (strcmp(operand, "LSS") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "7");
+    //     strcpy(opr_array[ccx].operand, "LSS");
+    // }
+    // else if (strcmp(operand, "LEQ") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "8");
+    //     strcpy(opr_array[ccx].operand, "LEQ");
+    // }
+    // else if (strcmp(operand, "GTR") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "9");
+    //     strcpy(opr_array[ccx].operand, "GTR");
+    // }
+    // else if (strcmp(operand, "GEQ") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "10");
+    //     strcpy(opr_array[ccx].operand, "GEQ");
+    // }
+    // else if (strcmp(operand, "ODD") == 0)
+    // {
+    //     // strcpy(opr_array[ccx].M, "11");
+    //     strcpy(opr_array[ccx].operand, "ODD");
+    // }
     if (strcmp(operand, "WRITE") == 0)
     {
         strcpy(opr_array[ccx].operand, "SYS");
